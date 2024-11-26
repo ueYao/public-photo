@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>照片瀑布流（滚动加载非规则命名图片）</title>
+    <style type="text/css">
+        #waterfall-container {
+            column-count: 3;
+            column-gap: 10px;
+        }
+
+        .image-item {
+            break-inside: avoid;
+            margin-bottom: 10px;
+        }
+
+        .image-item img {
+            width: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="waterfall-container"></div>
+    <script type="text/javascript">
+        // 这里假设你的GitHub仓库里图片路径有一定规律，这里只需要路径前缀，比如都在一个叫'images'的文件夹下
+        // 你需要替换成你实际的GitHub仓库图片路径格式
+        const githubImageBaseUrl = 'https://raw.githubusercontent.com/ueYao/public-photo/main/images/';
+
+        const imagesPerLoad = 10; // 每次滚动加载的图片数量
+
+        let loadedImagesCount = 0; // 已加载的图片总数
+        let allImageNames = []; // 存储所有图片名称
+
+        async function fetchAllImageNames() {
+            try {
+                // 创建请求配置对象，用于设置请求相关的选项，比如请求头
+                const requestOptions = {
+                    method: 'GET',
+                    headers: {
+                        // 添加User-Agent请求头，这里的值可以根据实际情况自定义，示例中使用Awesome-Octocat-App
+                        'User-Agent': 'Awesome-Octocat-App'
+                    }
+                };
+                // 使用fetch函数发起请求，并传入请求配置对象
+                const response = await fetch(`https://api.github.com/repos/ueYao/public-photo/contents/images`, requestOptions);
+                const data = await response.json();
+
+                allImageNames = data.map(item => item.name);
+            } catch (error) {
+                console.error('获取图片名称失败:', error);
+            }
+        }
+
+        async function loadImages() {
+            const waterfallContainer = document.getElementById('waterfall-container');
+
+            for (let i = 0; i < imagesPerLoad; i++) {
+                const imageIndex = loadedImagesCount + i;
+                if (imageIndex < allImageNames.length) {
+                    const imageUrl = `${githubImageBaseUrl}${allImageNames[imageIndex]}`;
+                    const imageItem = document.createElement('div');
+                    imageItem.classList.add('image-item');
+
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = `Image ${imageIndex}`;
+
+                    imageItem.appendChild(img);
+                    waterfallContainer.appendChild(imageItem);
+
+                    // 这里可以添加一些加载状态处理等，比如显示加载动画直到图片加载完成
+                    img.onload = function () {
+                        // 加载完成后隐藏加载动画等相关操作（如果有添加的话）
+                    };
+                }
+            }
+
+            loadedImagesCount += imagesPerLoad;
+        }
+
+        function isNearBottom() {
+            const windowHeight = window.innerHeight;
+            const bodyHeight = document.body.offsetHeight;
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+            return (bodyHeight - scrollPosition) <= windowHeight;
+        }
+
+        window.addEventListener('scroll', function () {
+            if (isNearBottom()) {
+                loadImages();
+            }
+        });
+
+        // 页面加载时先获取所有图片名称，然后加载第一批图片
+        window.onload = async function () {
+            await fetchAllImageNames();
+            loadImages();
+        };
+    </script>
+</body>
+
+</html>
